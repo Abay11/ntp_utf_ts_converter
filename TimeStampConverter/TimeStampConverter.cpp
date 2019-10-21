@@ -3,48 +3,36 @@
 #include <regex>
 #include <string>
 #include <sstream>
-#include <stdio.h>
-#include <stdint.h>
-#include <Winsock.h>
- 
-struct ntp_time_t {
-    uint32_t   second;
-    uint32_t    fraction;
-};
- 
-void convert_ntp_time_into_unix_time(struct ntp_time_t *ntp, timeval *unix)
+#include <ctime>
+
+void convert_ntp_time_into_unix_time(uint32_t& ntp, uint32_t& unix)
 {
-    unix->tv_sec = ntp->second - 0x83AA7E80; // the seconds from Jan 1, 1900 to Jan 1, 1970
-    unix->tv_usec = (uint32_t)( (double)ntp->fraction * 1.0e6 / (double)(1LL<<32) );
+	unix = ntp - 0x83AA7E80; // the seconds from Jan 1, 1900 to Jan 1, 1970
 }
- 
-void convert_unix_time_into_ntp_time(struct timeval *unix, struct ntp_time_t *ntp)
+
+void convert_unix_time_into_ntp_time(uint32_t& unix, uint32_t& ntp)
 {
-    ntp->second = unix->tv_sec + 0x83AA7E80;
-    ntp->fraction = (uint32_t)( (double)(unix->tv_usec+1) * (double)(1LL<<32) * 1.0e-6 );
+	ntp = unix + 0x83AA7E80;
 }
- 
 
 static const char* INCORRECT_FORMAT = "Incorrect input format! Please, try again...";
 
 int main()
 {
-	using namespace std;
-
-    ntp_time_t ntp;
-    timeval unix;
+	uint32_t ntp_;
+	uint32_t unix_;
 
 	std::string inputline;
 	std::regex expected_format("(q|[nu]\\s(0x\\w{8}|\\d+))", std::regex_constants::icase);
 	while (true)
 	{
-		cout << "\nInput format: n(NTP format) or u(UNIX format) with timestamp(HEX). q to quit " << endl;
-		cout << "Enter: ";
+		std::cout << "\nInput format: n(NTP format) or u(UNIX format) with timestamp(HEX). q to quit " << std::endl;
+		std::cout << "Enter: ";
 		std::getline(std::cin, inputline);
 
 		if (!std::regex_match(inputline, expected_format))
 		{
-			std::cerr << INCORRECT_FORMAT << endl;
+			std::cerr << INCORRECT_FORMAT << std::endl;
 		}
 		else
 		{
@@ -60,7 +48,7 @@ int main()
 			std::regex dec_format("[nu]\\s(\\d+)", std::regex_constants::icase);
 			if (std::regex_match(inputline, hex_format))
 			{
-				ss >> hex >> timestamp;
+				ss >> std::hex >> timestamp;
 			}
 			else if (std::regex_match(inputline, dec_format))
 			{
@@ -68,22 +56,28 @@ int main()
 			}
 			else
 			{
-				std::cerr << INCORRECT_FORMAT << endl;
+				std::cerr << INCORRECT_FORMAT << std::endl;
 				continue;
 			}
-			
+
+			time_t tmp;
+			char str_time[26];
 			if (c == 'n' || c == 'N')
 			{
-				ntp.second = timestamp;
-				convert_ntp_time_into_unix_time(&ntp, &unix);
-				cout << "Entered value in unix format: " << unix.tv_sec << endl;
+				ntp_ = timestamp;
+				convert_ntp_time_into_unix_time(ntp_, unix_);
+				std::cout << "Entered value in unix format: " << unix_ << std::endl;
 			}
 			else //c == u
 			{
-				unix.tv_sec = timestamp;
-				convert_unix_time_into_ntp_time(&unix, &ntp);
-				cout << "Entered value in ntp format: " << ntp.second << endl;
+				unix_ = timestamp;
+				convert_unix_time_into_ntp_time(unix_, ntp_);
+				std::cout << "Entered value in ntp format: " << ntp_ << std::endl;
 			}
+
+			tmp = unix_;
+			ctime_s(str_time, 26, &tmp);
+			std::cout << "As UTC date representation: " << str_time << std::endl;
 		}
 	}
 
